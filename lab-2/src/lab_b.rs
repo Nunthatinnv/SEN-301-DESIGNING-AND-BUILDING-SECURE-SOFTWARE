@@ -79,7 +79,8 @@ fn demo_mutate_in_scope_and_out_of_scope() {
 /// - Must use borrow_mut()
 /// - Must not keep the mutable borrow alive longer than necessary
 fn set_value(node: &NodeRef, new_value: &str) {
-    todo!("Implement set_value using borrow_mut()");
+    // todo!("Implement set_value using borrow_mut()");
+    node.borrow_mut().value = new_value.to_string();
 }
 
 fn demo_double_mut_borrow_panics() {
@@ -110,5 +111,21 @@ fn demo_double_mut_borrow_panics() {
 /// - Use std::panic::catch_unwind(|| { ... })
 /// - You may need std::panic::AssertUnwindSafe because RefCell is not UnwindSafe by default.
 fn double_borrow_demo(node: &NodeRef) {
-    todo!("Implement double borrow demo with catch_unwind");
+    // todo!("Implement double borrow demo with catch_unwind");
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        println!("Attempting first borrow...");
+        let _first_borrow = node.borrow_mut();
+        
+        println!("Attempting second borrow (this should panic)...");
+        let _second_borrow = node.borrow_mut(); 
+        
+        println!("This line should never be reached.");
+    }));
+
+    if result.is_err() {
+        println!("Success: The double mutable borrow caused a panic and we caught it!");
+    } else {
+        println!("Failure: The code did not panic as expected.");
+    }
+    
 }

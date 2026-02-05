@@ -42,13 +42,15 @@ impl Node {
     /// STUDENT TODO C1:
     /// Return next node as Option<Rc<RefCell<Node>>> (clone the Rc).
     fn next(&self) -> Option<NodeRef> {
-        todo!("Implement next(): clone Rc handle from self.next");
+        // todo!("Implement next(): clone Rc handle from self.next");
+        self.next.clone()
     }
 
     /// STUDENT TODO C1:
     /// Return prev node as Option<Rc<RefCell<Node>>> by upgrading Weak.
     fn prev(&self) -> Option<NodeRef> {
-        todo!("Implement prev(): upgrade Weak from self.prev");
+        // todo!("Implement prev(): upgrade Weak from self.prev");
+        self.prev.as_ref().and_then(|weak| weak.upgrade())
     }
 }
 
@@ -63,7 +65,9 @@ impl Node {
 /// - Keep borrow_mut scopes short.
 /// - Do not hold two mutable borrows at the same time.
 fn link(a: &NodeRef, b: &NodeRef) {
-    todo!("Implement link(a,b) with Rc and Weak");
+    // todo!("Implement link(a,b) with Rc and Weak");
+    a.borrow_mut().next = Some(b.clone());
+    b.borrow_mut().prev = Some(Rc::downgrade(a));
 }
 
 fn demo_two_node_dll() {
@@ -77,18 +81,12 @@ fn demo_two_node_dll() {
     // Forward: A -> B
     let a_next = a.borrow().next();
     println!("a.value = {}", a.borrow().value);
-    println!(
-        "a.next.value = {}",
-        a_next.as_ref().unwrap().borrow().value
-    );
+    println!("a.next.value = {}", a_next.as_ref().unwrap().borrow().value);
 
     // Backward: B -> A
     let b_prev = b.borrow().prev();
     println!("b.value = {}", b.borrow().value);
-    println!(
-        "b.prev.value = {}",
-        b_prev.as_ref().unwrap().borrow().value
-    );
+    println!("b.prev.value = {}", b_prev.as_ref().unwrap().borrow().value);
 
     println!("Checkpoint: forward should be A -> B and backward should be B -> A.");
 }
