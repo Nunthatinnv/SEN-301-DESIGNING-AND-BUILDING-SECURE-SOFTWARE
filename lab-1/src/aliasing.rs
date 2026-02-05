@@ -26,15 +26,11 @@ unsafe fn pow(src: *const u64, dst: *mut u64, p: u32) -> Result<(), PowError> {
     // - aliased call returns Err(PowError::AliasingNotAllowed)
     // - `same` remains unchanged
 
-<<<<<<< HEAD
     
     unsafe {
         if *src == *dst {
             return Err(PowError::AliasingNotAllowed);
         }
-=======
-    unsafe {
->>>>>>> upstream/main
         *dst = 1;
         for _ in 0..p {
             *dst = *dst * *src;
@@ -51,7 +47,6 @@ pub fn run() {
 
     // Caller mistake (aliasing: src == dst)
     let mut src: u64 = 5;
-<<<<<<< HEAD
     let r_bad = unsafe { 
         pow(&src as *const u64, &mut src as *mut u64, p) 
     };
@@ -61,12 +56,4 @@ pub fn run() {
     let mut dst: u64 = 5;
     let r_good = unsafe { pow(&src as *const u64, &mut dst as *mut u64, p) };
     println!("(distinct): res={:?}, src={}, dst={}", r_good, src, dst);
-=======
-    let r_bad = unsafe { pow(&src as *const u64, &mut src as *mut u64, p) };
-    println!("(aliased): res={:?}, src={}", r_bad, src);
-
-    // TODO: Add a correct call where src and dst are distinct, e.g., by allocating a new dst.
-    //let r_good = unsafe { pow(&src as *const u64, &mut dst as *mut u64, p) };
-    //println!("(distinct): res={:?}, src={}, dst={}", r_good, src, dst);
->>>>>>> upstream/main
 }
