@@ -72,9 +72,9 @@
 
 use std::collections::VecDeque;
 use std::sync::{
+    Arc, Mutex,
     atomic::{AtomicBool, AtomicU64, Ordering},
     mpsc,
-    Arc, Mutex,
 };
 use std::thread;
 use std::time::Instant;
@@ -178,7 +178,30 @@ fn worker_loop(
     // TODO: Implement the worker protocol described above.
     //
     // Remove the panic once implemented.
-    panic!("TODO: worker_loop not implemented");
+    // panic!("TODO: worker_loop not implemented");
+
+    loop {
+        if stop.load(Ordering::Relaxed) {
+            break;
+        }
+
+        let work = work_queue.lock().unwrap().pop_front();
+        if work.is_none() {
+            break;
+        }
+        let work = work.unwrap();
+
+        for nonce in work.start..work.end_exclusive() {
+            if stop.load(Ordering::Relaxed) {
+                break;
+            }
+            let hash_hex = sha256_hex(&prefix, nonce);
+            hashes.fetch_add(1, Ordering::Relaxed);
+            if meets_difficulty(&hash_hex, difficulty) {
+                sol_tx.send(Solution { nonce, hash_hex }).unwrap();
+            }
+        }
+    }
 }
 
 fn main() {
@@ -188,7 +211,7 @@ fn main() {
     // If difficulty is too high, you may not find k solutions in [start, end).
     // For early testing, set difficulty to 3 or 4.
     let prefix = "cmkl-pow".to_string();
-    let difficulty: usize = 6;
+    let difficulty: usize = 5;
     let k: usize = 10;
 
     let start: u64 = 0;
@@ -223,7 +246,9 @@ fn main() {
     // TODO: create (sol_tx, sol_rx)
     //
     // let (sol_tx, sol_rx) = ...
-    panic!("TODO 1: create solution channel");
+    let (tx, rx) = mpsc::channel();
+
+    // panic!("TODO 1: create solution channel");
 
     // =================================================================================
     // TODO 2: Spawn and manage worker threads
@@ -248,7 +273,20 @@ fn main() {
     // let mut handles = Vec::new();
     // for id in 0..threads { ... }
     // drop(sol_tx);
-    panic!("TODO 2: spawn workers");
+    let mut handles = Vec::new();
+    for id in 0..threads {
+        let sol_tx = tx.clone();
+        let work_queue = work_queue.clone();
+        let stop = stop.clone();
+        let hashes = hashes.clone();
+        let prefix = prefix.clone();
+        let handle = thread::spawn(move || {
+            worker_loop(id, prefix, difficulty, work_queue, sol_tx, stop, hashes);
+        });
+        handles.push(handle);
+    }
+    drop(tx);
+    // panic!("TODO 2: spawn workers");
 
     // =================================================================================
     // TODO 3: Collector logic (main thread)
@@ -267,9 +305,15 @@ fn main() {
     // TODO: implement collector logic and joining.
     //
     let mut solutions: Vec<Solution> = Vec::new();
+    while let Ok(solution) = rx.recv() {
+        solutions.push(solution);
+        if solutions.len() >= k {
+            stop.store(true, Ordering::Relaxed);
+            break;
+        }
+    }
+    // panic!("TODO 3: collector logic");
 
-    panic!("TODO 3: collector logic");
-    
     // =================================================================================
     // Final reporting (provided)
     // =================================================================================
