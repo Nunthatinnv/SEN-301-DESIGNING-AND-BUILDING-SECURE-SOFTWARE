@@ -90,7 +90,14 @@ impl Node {
     ///   - Wrap it in `Rc<RefCell<_>>`
     ///   - Initialize `prev = None`, `next = None`
     fn new(value: Value) -> Rc<RefCell<Self>> {
-        todo!("Create Rc<RefCell<Node>> with prev=None and next=None");
+        // todo!("Create Rc<RefCell<Node>> with prev=None and next=None");
+        let node = Node {
+            value,
+            prev: None,
+            next: None,
+        };
+
+        Rc::new(RefCell::new(node))
     }
 
     /// Return the next node in the list.
@@ -102,7 +109,8 @@ impl Node {
     /// TODO:
     ///   - Return `self.next.clone()`
     fn next(&self) -> Link {
-        todo!("Return self.next cloned");
+        // todo!("Return self.next cloned");
+        self.next.clone()
     }
 
     /// Return the previous node in the list.
@@ -115,7 +123,8 @@ impl Node {
     ///   - If `self.prev` is `Some(w)`, return `w.upgrade()`
     ///   - Otherwise, return `None`
     fn prev(&self) -> Link {
-        todo!("Upgrade self.prev (Weak) into Rc and return it");
+        // todo!("Upgrade self.prev (Weak) into Rc and return it");
+        self.prev.as_ref().and_then(|weak| weak.upgrade())
     }
 }
 
@@ -171,7 +180,18 @@ impl DoublyLinkedList {
     ///   - Keep `borrow_mut()` scopes SHORT.
     ///   - Never hold two mutable borrows at once.
     pub fn push_front(&mut self, value: Value) {
-        todo!("Implement push_front");
+        // todo!("Implement push_front");
+        let new_node = Node::new(value);
+
+        if let Some(old_head) = self.head.take() {
+            old_head.borrow_mut().prev = Some(Rc::downgrade(&new_node.clone()));
+            new_node.borrow_mut().next = Some(old_head);
+            self.head = Some(new_node);
+        } else {
+            self.head = Some(new_node.clone());
+            self.tail = Some(new_node);
+        }
+        self.len += 1;
     }
 
     /// Insert a value at the back of the list.
@@ -187,7 +207,18 @@ impl DoublyLinkedList {
     ///      - new_node.prev = Weak(old_tail)
     ///      - tail = new_node
     pub fn push_back(&mut self, value: Value) {
-        todo!("Implement push_back");
+        // todo!("Implement push_back");
+        let new_node = Node::new(value);
+
+        if let Some(old_tail) = self.tail.take() {
+            old_tail.borrow_mut().next = Some(new_node.clone());
+            new_node.borrow_mut().prev = Some(Rc::downgrade(&old_tail));
+            self.tail = Some(new_node);
+        } else {
+            self.head = Some(new_node.clone());
+            self.tail = Some(new_node);
+        }
+        self.len += 1;
     }
 
     /// Remove and return the value at the front of the list.
@@ -209,7 +240,25 @@ impl DoublyLinkedList {
     /// NOTE:
     ///   - Detaching the removed node's links is good hygiene.
     pub fn pop_front(&mut self) -> Option<Value> {
-        todo!("Implement pop_front");
+        // todo!("Implement pop_front");
+        if let Some(old_head) = self.head.take() {
+            let value = old_head.borrow().value.clone();
+            self.head = old_head.borrow().next();
+
+            if let Some(new_head) = self.head.as_ref() {
+                new_head.borrow_mut().prev = None;
+            } else {
+                self.tail = None;
+            }
+            self.len -= 1;
+
+            // Hygiene: detach the old head
+            old_head.borrow_mut().next = None;
+
+            Some(value)
+        } else {
+            None
+        }
     }
 
     /// Remove and return the value at the back of the list.
@@ -228,7 +277,23 @@ impl DoublyLinkedList {
     ///      - new_tail = old_tail.prev (upgrade Weak)
     ///      - new_tail.next = None
     pub fn pop_back(&mut self) -> Option<Value> {
-        todo!("Implement pop_back");
+        // todo!("Implement pop_back");
+        if let Some(old_tail) = self.tail.take() {
+            let value = old_tail.borrow().value.clone();
+            self.tail = old_tail.borrow().prev();
+
+            if let Some(new_tail) = self.tail.as_ref() {
+                new_tail.borrow_mut().next = None;
+            } else {
+                self.head = None;
+            }
+            self.len -= 1;
+            old_tail.borrow_mut().prev = None;
+
+            Some(value)
+        } else {
+            None
+        }
     }
 
     /// Iterate from head to tail.

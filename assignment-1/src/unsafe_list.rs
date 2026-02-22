@@ -30,7 +30,7 @@
 // - No double frees
 //
 
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{Layout, alloc, dealloc};
 use std::ptr::null_mut;
 
 /// The value stored in the list.
@@ -83,7 +83,20 @@ impl DoublyLinkedList {
     // - Return a *mut Node
     //
     unsafe fn alloc_node(value: Value) -> *mut Node {
-        todo!("Allocate Node using alloc and initialize its fields");
+        // todo!("Allocate Node using alloc and initialize its fields");
+        unsafe {
+            let layout = Layout::new::<Node>();
+            let ptr = alloc(layout);
+            if ptr.is_null() {
+                std::alloc::handle_alloc_error(layout);
+            }
+            let node = ptr as *mut Node;
+            (*node).value = value;
+            (*node).prev = null_mut();
+            (*node).next = null_mut();
+
+            return node;
+        }
     }
 
     // --------------------------------------------------
@@ -96,7 +109,10 @@ impl DoublyLinkedList {
     // - Node must not be freed more than once
     //
     unsafe fn dealloc_node(node: *mut Node) {
-        todo!("Deallocate Node using dealloc with Layout::new::<Node>()");
+        // todo!("Deallocate Node using dealloc with Layout::new::<Node>()");
+        unsafe {
+            dealloc(node as *mut u8, Layout::new::<Node>());
+        }
     }
 
     pub fn push_front(&mut self, value: Value) {
@@ -301,7 +317,10 @@ impl Iterator for IterBackward {
 //
 impl Drop for DoublyLinkedList {
     fn drop(&mut self) {
-        todo!("Walk list and deallocate all nodes");
+        // todo!("Walk list and deallocate all nodes");
+        while self.len > 0 {
+            self.pop_front();
+        }
     }
 }
 

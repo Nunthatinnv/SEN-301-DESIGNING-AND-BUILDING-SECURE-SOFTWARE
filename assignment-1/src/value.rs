@@ -42,7 +42,11 @@ impl Value {
     /// - `Some(i64)` if this value is an integer
     /// - `None` if this value is a float
     pub fn as_int(&self) -> Option<i64> {
-        todo!("Return Some(i64) if Value::Int, otherwise None");
+        // todo!("Return Some(i64) if Value::Int, otherwise None");
+        match self {
+            Value::Int(x) => Some(*x),
+            _ => None,
+        }
     }
 
     /// Attempt to extract the value as an `f64`.
@@ -51,7 +55,11 @@ impl Value {
     /// - `Some(f64)` if this value is a float
     /// - `None` if this value is an integer
     pub fn as_float(&self) -> Option<f64> {
-        todo!("Return Some(f64) if Value::Float, otherwise None");
+        // todo!("Return Some(f64) if Value::Float, otherwise None");
+        match self {
+            Value::Float(x) => Some(*x),
+            _ => None,
+        }
     }
 }
 
