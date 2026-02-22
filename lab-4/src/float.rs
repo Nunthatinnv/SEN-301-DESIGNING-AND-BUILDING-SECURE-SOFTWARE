@@ -1,4 +1,4 @@
-// Lab B — Floating-Point Safety 
+// Lab B — Floating-Point Safety
 //
 // Your task: Fix the buggy functions so that running
 //
@@ -7,7 +7,7 @@
 // no longer produces incorrect security decisions.
 //
 // ------------------------------------
-// TODO 
+// TODO
 // ------------------------------------
 // 1) Fix `ratio_check_buggy`:
 //      - Explicitly reject NaN and infinity.
@@ -41,9 +41,12 @@ pub fn run() {
     // Demo 1: NaN / infinity propagation
     // ------------------------------------------------------------
     // 0.0 / 0.0 = NaN
-    let allowed = ratio_check_buggy(0.0, 0.0)
-        .expect("BUG: NaN / infinity not handled");
-    println!("Ratio check with 0/0 says allowed? {allowed}");
+    // let allowed = ratio_check_buggy(0.0, 0.0).expect("BUG: NaN / infinity not handled");
+    let allowed = ratio_check_buggy(0.0, 0.0);
+    match allowed {
+        Ok(b) => println!("Ratio check with 0/0 says allowed? {b}"),
+        Err(e) => println!("Error: {:?}", e),
+    }
 
     // ------------------------------------------------------------
     // Demo 2: Threshold comparison instability
@@ -52,9 +55,12 @@ pub fn run() {
     let b = 0.2f64;
     let c = 0.3f64;
 
-    let ok = threshold_check_buggy(a, b, c)
-        .expect("BUG: float comparison instability not handled");
-    println!("Threshold check (0.1 + 0.2 <= 0.3) says ok? {ok}");
+    // let ok = threshold_check_buggy(a, b, c).expect("BUG: float comparison instability not handled");
+    let ok = threshold_check_buggy(a, b, c);
+    match ok {
+        Ok(b) => println!("Threshold check (0.1 + 0.2 <= 0.3) says ok? {b}"),
+        Err(e) => println!("Error: {:?}", e),
+    }
 }
 
 /// BUG #1: NaN / infinity not handled
@@ -63,8 +69,17 @@ pub fn run() {
 ///   ratio is used for a security decision.
 ///   NaN comparisons are always false, which can silently bypass logic.
 pub fn ratio_check_buggy(numer: f64, denom: f64) -> Result<bool> {
+    if denom == 0.0 {
+        return Err(LabError::InvalidInput);
+    }
+
     let r = numer / denom; // BUG: 0.0/0.0 = NaN
-    Ok(r < 0.9)            // BUG: NaN < 0.9 is false
+
+    if !r.is_finite() {
+        return Err(LabError::NaNOrInfinity);
+    }
+
+    Ok(r < 0.9) // BUG: NaN < 0.9 is false
 }
 
 /// BUG #2: Float threshold instability
@@ -72,5 +87,17 @@ pub fn ratio_check_buggy(numer: f64, denom: f64) -> Result<bool> {
 /// Scenario:
 ///   Security / financial threshold logic using floats.
 pub fn threshold_check_buggy(a: f64, b: f64, c: f64) -> Result<bool> {
-    Ok(a + b <= c) // BUG: 0.1 + 0.2 > 0.3 due to precision
-} 
+    let sum = a + b;
+    if !sum.is_finite() || !c.is_finite() {
+        return Err(LabError::NaNOrInfinity);
+    }
+
+    let epsilon = f64::EPSILON;
+
+    if (sum - c).abs() < epsilon {
+        return Ok(true);
+    } else {
+        return Err(LabError::PrecisionLoss);
+    }
+    // Ok(sum <= c) // BUG: 0.1 + 0.2 > 0.3 due to precision
+}

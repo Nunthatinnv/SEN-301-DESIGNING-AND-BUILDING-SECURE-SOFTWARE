@@ -9,7 +9,7 @@
 //   cargo run --release   (compare behavior)
 //
 // =======================================
-// TODO 
+// TODO
 // =======================================
 // 1) Fix `alloc_records_buggy`:
 //      - Prevent overflow in `count * record_size`.
@@ -39,7 +39,7 @@
 //   - Use usize::try_from(...) and validate ranges.
 //   - Handle offset < 0 explicitly before conversion.
 //   - Use u16::try_from(...) and validate port range.
-//   - If divisor == 0, return Err(DivideByZero). 
+//   - If divisor == 0, return Err(DivideByZero).
 //
 // =======================================
 
@@ -66,14 +66,14 @@ type Result<T> = std::result::Result<T, LabError>;
 /// In release builds, it may wrap, resulting in a too-small allocation.
 ///
 /// Your task: make this safe and return Result<Vec<u8>>.
-fn alloc_records_buggy(count: u32, record_size: u32) -> Vec<u8> {
+fn alloc_records_buggy(count: u32, record_size: u32) -> Result<Vec<u8>> {
     // BUG: overflow is possible; in release this wraps.
-    let total_bytes_u32 = count * record_size;
+    let total_bytes_u32 = count.checked_mul(record_size).ok_or(LabError::Overflow)?;
 
     // BUG: unchecked cast; also hides truncation when going to usize on some platforms.
-    let total = total_bytes_u32 as usize;
+    let total = usize::try_from(total_bytes_u32).map_err(|_| LabError::Overflow)?;
 
-    vec![0u8; total]
+    Ok(vec![0u8; total])
 }
 
 /// BUG #2: signedness / cast bug + out-of-bounds
@@ -85,9 +85,10 @@ fn alloc_records_buggy(count: u32, record_size: u32) -> Vec<u8> {
 /// Indexing panics.
 ///
 /// Your task: return Result<u8>.
-fn read_at_offset_buggy(buf: &[u8], offset: i32) -> u8 {
-    let idx = offset as usize; // BUG: negative -> huge
-    buf[idx] // BUG: may panic
+fn read_at_offset_buggy(buf: &[u8], offset: i32) -> Result<u8> {
+    let idx = usize::try_from(offset).map_err(|_| LabError::NegativeOffset)?; // BUG: negative -> huge
+
+    buf.get(idx).copied().ok_or(LabError::OutOfBounds)
 }
 
 /// BUG #3: truncation bug
@@ -98,8 +99,14 @@ fn read_at_offset_buggy(buf: &[u8], offset: i32) -> u8 {
 /// Example: 70000 becomes 4464 (70000 mod 65536).
 ///
 /// Your task: enforce range [1, 65535] and return Result<u16>.
-fn parse_port_buggy(port_from_user: u64) -> u16 {
-    port_from_user as u16 // BUG: silent truncation
+fn parse_port_buggy(port_from_user: u64) -> Result<u16> {
+    let port = u16::try_from(port_from_user).map_err(|_| LabError::InvalidPort)?;
+
+    if port == 0 {
+        return Err(LabError::InvalidPort);
+    }
+
+    Ok(port)
 }
 
 /// BUG #4: divide-by-zero
@@ -108,8 +115,10 @@ fn parse_port_buggy(port_from_user: u64) -> u16 {
 /// If chunks == 0, this panics.
 ///
 /// Your task: return Result<u64>.
-fn avg_chunk_size_buggy(total_bytes: u64, chunks: u64) -> u64 {
-    total_bytes / chunks // BUG: divide by zero
+fn avg_chunk_size_buggy(total_bytes: u64, chunks: u64) -> Result<u64> {
+    total_bytes
+        .checked_div(chunks)
+        .ok_or(LabError::DivideByZero) // BUG: divide by zero
 }
 
 pub fn run() {
@@ -127,7 +136,10 @@ pub fn run() {
     let record_size = 100_000u32;
 
     let buf = alloc_records_buggy(count, record_size);
-    println!("Allocated buffer length: {}", buf.len());
+    match buf {
+        Ok(b) => println!("Allocated buffer length: {}", b.len()),
+        Err(e) => println!("Error: {:?}", e),
+    }
 
     // ------------------------------------------------------------
     // Demo 2: Signedness cast bug
@@ -137,18 +149,27 @@ pub fn run() {
     let offset = -1i32;
 
     let _x = read_at_offset_buggy(&data, offset);
-    println!("Read byte: {}", _x);
+    match _x {
+        Ok(b) => println!("Read byte: {}", b),
+        Err(e) => println!("Error: {:?}", e),
+    }
 
     // ------------------------------------------------------------
     // Demo 3: Truncation bug
     // ------------------------------------------------------------
     // 70000 is not a valid TCP/UDP port, but truncation produces 4464.
     let p = parse_port_buggy(70_000);
-    println!("Parsed port: {}", p);
+    match p {
+        Ok(port) => println!("Parsed port: {}", port),
+        Err(e) => println!("Error: {:?}", e),
+    }
 
     // ------------------------------------------------------------
     // Demo 4: Divide by zero
     // ------------------------------------------------------------
     let avg = avg_chunk_size_buggy(1024, 0);
-    println!("Average chunk size: {}", avg);
+    match avg {
+        Ok(size) => println!("Average chunk size: {}", size),
+        Err(e) => println!("Error: {:?}", e),
+    }
 }
